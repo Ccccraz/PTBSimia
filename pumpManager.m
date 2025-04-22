@@ -10,7 +10,7 @@ classdef pumpManager
     %---------------PUBLIC PROPERTIES---------------%
     properties (Constant)
         manufacturer = 'simia'
-        product      = 'pump'
+        product      = 'pump_A100_v0.1.1'
     end
     
     %---------------PRIVATE PROPERTIES--------------%

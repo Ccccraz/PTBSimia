@@ -9,7 +9,6 @@ classdef pumpManager
 
     %---------------PUBLIC PROPERTIES---------------%
     properties (Constant)
-        pumpName     = 'simia pump'
         manufacturer = 'simia'
         product      = 'pump'
     end
@@ -76,7 +75,7 @@ classdef pumpManager
 
         % ===================================================================
         function err = reverse(obj)
-        % Reverse
+        % Reverse pump running direction
 		% ===================================================================
             cmd = typecast(obj.reverseCmd, 'uint8');
             err = PsychHID('SetReport', obj.pumpIndex, 2, 0, cmd);

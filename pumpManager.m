@@ -9,8 +9,9 @@ classdef pumpManager
     
     %---------------PUBLIC PROPERTIES---------------%
     properties (Constant)
-        manufacturer = 'simia'
-        product      = 'pump_A100_v0.1.1'
+        manufacturer   = 'simia'
+        product        = 'pump_A100_v0.1.1'
+        legacy_product = 'pump'
     end
     
     %---------------PRIVATE PROPERTIES--------------%
@@ -22,6 +23,9 @@ classdef pumpManager
         stopRewardCmd         = uint32([1, 0])
         reverseCmd            = uint32([2, 0])
         setSpeedCmd           = uint32([3, 0])
+        
+        % pre-defined legacy command
+        speed = 100
     end
     
     methods
@@ -35,10 +39,26 @@ classdef pumpManager
             % ===================================================================
             devices = PsychHID('Devices');
             matchingIndices = find(strcmpi({devices.manufacturer}, obj.manufacturer) & ...
-                strcmpi({devices.product}, 'pump'));
+                strcmpi({devices.product}, obj.product));
             for idx = matchingIndices
                 obj.pumpIndex = devices(idx).index;
             end
+            if devices.manufacturer == obj.product
+                obj.giveRewardCmd         = uint32([0, 0]);
+                obj.giveRewardDurationCmd = uint32([0, 0]);
+                obj.stopRewardCmd         = uint32([1, 0]);
+                obj.reverseCmd            = uint32([2, 0]);
+                obj.setSpeedCmd           = uint32([3, 0]);
+            end
+            if devices.manufacturer == obj.legacy_product
+                obj.giveRewardCmd         = single([1, 0, 0, 0, 0]);
+                obj.giveRewardDurationCmd = single([1, 0, 0, 0, 0]);
+                obj.stopRewardCmd         = single([0, 0, 1, 0, 0]);
+                obj.setSpeedCmd           = single([0, 0, 0. 0, 0]);
+                obj.reverseCmd            = single([0, 0, 0, 0, 1]);
+            end
+            
+            
         end
         function giveReward(obj)
             % ===================================================================

@@ -12,17 +12,23 @@ classdef pumpManager
         manufacturer   = 'simia'
         product        = 'pump_A100_v0.1.1'
         legacy_product = 'pump'
+        
+        cmd_t = struct( ...
+            'device_id', uint8(0), ...
+            'cmd',       uint8(0), ...
+            'payload',   uint32(0) ...
+            )
     end
     
     %---------------PRIVATE PROPERTIES--------------%
     properties (Access = private)
         pumpIndex
         % pre-defined command
-        giveRewardCmd         = uint32([0, 0])
-        giveRewardDurationCmd = uint32([0, 0])
-        stopRewardCmd         = uint32([1, 0])
-        reverseCmd            = uint32([2, 0])
-        setSpeedCmd           = uint32([3, 0])
+        giveRewardCmd
+        giveRewardDurationCmd
+        stopRewardCmd
+        reverseCmd
+        setSpeedCmd
         
         % pre-defined legacy command
         speed = 100

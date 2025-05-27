@@ -45,37 +45,28 @@ classdef pumpManager
             obj.simiaPumps = PTBSimia.simiaPump.pump(obj.pumpIndex);
         end
 
-        function giveReward(obj)
+        function giveReward(obj, duration)
             % ===================================================================
             % Unlimited give rewards
             % ===================================================================
-            obj.simiaPumps.reward();
-        end
-
-        function giveRewardWithDuration(obj, duration)
-            % ===================================================================
-            % Give rewards that last a certain amount of time
-            %> @fn giveRewardDuration(obj, duration) duration: Duration in milliseconds
-            % ===================================================================
             arguments
                 obj
-                duration (1, 1) uint32 {mustBePositive, mustBeInteger}
+                duration (1, 1) uint32 {mustBeNonnegative, mustBeInteger} = 0
             end
 
-            disp("pumpManager: ")
-            disp(duration)
-            obj.simiaPumps.rewardWithDuration(duration);
+            obj.simiaPumps.reward(duration);
         end
 
-        function stopReward(obj)
+        function stopReward(obj, all)
             % ===================================================================
             % Stop rewards
             % ===================================================================
-            obj.simiaPumps.stopReward();
-        end
+            arguments
+                obj
+                all logical = true
+            end
 
-        function stopCurrentReward(obj)
-            obj.simiaPumps.stopCurrentReward()
+            obj.simiaPumps.stopReward(all);
         end
 
         function setSpeed(obj, speed)

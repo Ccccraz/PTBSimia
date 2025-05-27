@@ -1,8 +1,9 @@
 classdef pump
     properties
-        deviceIndex double {mustBePositive, mustBeInteger}
+        deviceIndex double {mustBeNonnegative, mustBeInteger}
         % for all simia devices default deviceId is 0
         deviceId uint8 = 0
+        nickname string = 'simiapump'
     end
 
     methods (Access = public)
@@ -10,61 +11,76 @@ classdef pump
             obj.deviceIndex = deviceIndex;
         end
 
-        function reward(obj)
+        function reward(obj, duration)
             % 0 for infinite reward
-            cmd = obj.createStartCmd(0);
-            obj.sendOutputCmd(cmd);
-        end
-
-        function rewardWithDuration(obj, duration)
             arguments
                 obj
-                duration (1, 1) uint32 {mustBePositive, mustBeInteger}
+                duration (1, 1) uint32 {mustBeNonnegative, mustBeInteger}
             end
 
-            % duration in milliseconds
-            cmd = obj.createStartCmd(duration);
-            obj.sendOutputCmd(cmd);
-            disp(cmd);
-        end
-
-        function stopReward(obj)
-            cmd = obj.createStopCmd(true);
+            cmd = obj.createOutputStartCmd(duration);
             obj.sendOutputCmd(cmd);
         end
 
-        function stopCurrentReward(obj)
-            cmd = obj.createStopCmd(false);
+        function stopReward(obj, all)
+            arguments
+                obj
+                all logical
+            end
+
+            cmd = obj.createOutputStopCmd(all);
             obj.sendOutputCmd(cmd);
         end
 
         function reverse(obj)
-            cmd = obj.createReverseCmd();
+            cmd = obj.createOutputReverseCmd();
             obj.sendOutputCmd(cmd);
         end
 
         function setSpeed(obj, speed)
-            cmd = obj.createSetSpeedCmd(speed);
+            arguments
+                obj
+                speed (1, 1) double {mustBeNonnegative, mustBeInteger}
+            end
+
+            cmd = obj.createOutputSetSpeedCmd(speed);
             obj.sendOutputCmd(cmd);
         end
 
-        function setDeviceId(obj, deviceId, nickname)
-            report = obj.createSetDeviceId(deviceId, nickname);
+        function setDeviceId(obj, deviceId)
+            arguments
+                obj
+                deviceId (1, 1) double {mustBeNonnegative, mustBeInteger, mustBeInRange(deviceId, 0, 255)}
+            end
+
+            obj.deviceId = deviceId;
+            report = obj.createFeatureSetDeviceInfo(deviceId, obj.nickname);
+            obj.setFeature(report);
+        end
+
+        function setDeviceNickname(obj, nickname)
+            arguments
+                obj
+                nickname string
+            end
+
+            obj.nickname = nickname;
+            report = obj.createFeatureSetDeviceInfo(obj.deviceId, nickname);
             obj.setFeature(report);
         end
 
         function setWifi(obj, ssid, password)
-            report = obj.createSetWifiCmd(ssid, password);
+            report = obj.createFeatureSetWifi(ssid, password);
             obj.setFeature(report);
         end
 
         function enableOTAMode(obj)
-            report = obj.createSetStartMode(1);
+            report = obj.createFeatureSetStartMode(1);
             obj.setFeature(report);
         end
 
         function enableFlashMode(obj)
-            report = obj.createSetStartMode(0);
+            report = obj.createFeatureSetStartMode(0);
             obj.setFeature(report);
         end
 
@@ -120,19 +136,7 @@ classdef pump
         function report = parseWifiFeatureReport(report)
         end
 
-        function report = createReportCmd(~, cmd)
-            switch cmd
-                case type.cmd_t.START
-                    report = struct( ...
-                        'device_id', uint8(0x00), ...
-                        'cmd', type.cmd_t(START), ...
-                        'payload', uint32_t(0x00) ...
-                        );
-                otherwise
-            end
-        end
-
-        function report = createStartCmd(obj, duration)
+        function report = createOutputStartCmd(obj, duration)
             arguments
                 obj
                 duration uint32
@@ -156,22 +160,22 @@ classdef pump
                 ];
         end
 
-        function report = createStopCmd(obj, stopAll)
+        function report = createOutputStopCmd(obj, all)
             arguments
                 obj
-                stopAll logical
+                all logical
             end
 
-            if stopAll
-                stopAll = uint8(0x00);
+            if all
+                all = uint8(0x00);
             else
-                stopAll = uint8(0x01);
+                all = uint8(0x01);
             end
 
             report_info = struct( ...
                 'device_id', uint8(obj.deviceId), ...
                 'cmd', uint8(PTBSimia.simiaPump.type.output_cmd_t.STOP), ...
-                'payload', uint8(stopAll) ...
+                'payload', uint8(all) ...
                 );
 
             report = [
@@ -182,7 +186,7 @@ classdef pump
                 ];
         end
 
-        function report = createReverseCmd(obj)
+        function report = createOutputReverseCmd(obj)
             arguments
                 obj
             end
@@ -201,10 +205,10 @@ classdef pump
                 ];
         end
 
-        function report = createSetSpeedCmd(obj, speed)
+        function report = createOutputSetSpeedCmd(obj, speed)
             arguments
                 obj
-                speed uint32 {mustBeInteger}
+                speed (1, 1) double {mustBeNonnegative, mustBeInteger}
             end
 
             speed = uint32(speed);
@@ -223,12 +227,32 @@ classdef pump
                 ];
         end
 
-        function report = createSetDeviceId(obj, deviceId, nickname)
+        % TODO: No Finished
+        function report = createOutputCmd(obj, cmd_type, payload)
             arguments
                 obj
-                deviceId (1, 1) uint8
+                cmd_type PTBSimia.simiaPump.type.output_cmd_t
+                payload (1, :) uint8
+            end
+            device_id = uint8(obj.deviceId);
+            cmd = uint8(cmd_type);
+
+            report = [
+                0x00, ...
+                device_id, ...
+                cmd, ...
+                payload(:) ...
+                ];
+        end
+
+        function report = createFeatureSetDeviceInfo(obj, deviceId, nickname)
+            arguments
+                obj
+                deviceId (1, 1) double {mustBeNonnegative, mustBeInteger, mustBeInRange(deviceId, 0, 255)}
                 nickname string
             end
+
+            deviceId = uint8(deviceId);
 
             device_info = struct( ...
                 'device_id', deviceId, ...
@@ -244,6 +268,7 @@ classdef pump
                 );
 
             report = [
+                0x00, ...
                 report_info.device_id, ...
                 report_info.payload.device_id, ...
                 report_info.payload.nickname_len, ...
@@ -251,7 +276,7 @@ classdef pump
                 ];
         end
 
-        function report = createSetWifiCmd(obj, ssid, password)
+        function report = createFeatureSetWifi(obj, ssid, password)
             arguments
                 obj
                 ssid string
@@ -274,6 +299,7 @@ classdef pump
                 );
 
             report = [
+                0x00, ...
                 report_info.device_id, ...
                 report_info.payload.ssid_len, ...
                 report_info.payload.password_len, ...
@@ -282,7 +308,7 @@ classdef pump
                 ];
         end
 
-        function report = createSetStartMode(obj, startMode)
+        function report = createFeatureSetStartMode(obj, startMode)
             arguments
                 obj
                 startMode
@@ -295,6 +321,7 @@ classdef pump
             report_info.payload(1) = uint8(startMode);
 
             report = [
+                0x00, ...
                 report_info.device_id, ...
                 report_info.payload ...
                 ];

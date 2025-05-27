@@ -1,4 +1,4 @@
-classdef cmd_t < uint8
+classdef output_cmd_t < uint8
     enumeration
         START(0x00)
         STOP(0x01)

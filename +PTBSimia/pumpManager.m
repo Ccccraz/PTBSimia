@@ -4,7 +4,7 @@
 %>
 %> Copyright ©2014-2025 HuYang — released: LGPL3
 % ==============================================================================
-classdef pumpManager
+classdef pumpManager < handle
 
 
     %---------------PUBLIC PROPERTIES---------------%
@@ -82,6 +82,18 @@ classdef pumpManager
             % Reverse pump running direction
             % ===================================================================
             obj.simiaPumps.reverse();
+        end
+
+        function [device_id, nickname] = GetDeviceId(obj)
+            [device_id, nickname] = obj.simiaPumps.getDeviceInfo();
+        end
+
+        function [ssid, password] = GetWifiInfo(obj)
+            [ssid, password] = obj.simiaPumps.getWifi();
+        end
+
+        function setDeviceId(obj, deviceId)
+            obj.simiaPumps.setDeviceId(deviceId);
         end
     end
 end

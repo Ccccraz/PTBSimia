@@ -1,14 +1,14 @@
-classdef pump
+classdef pump < handle
     properties
         deviceIndex double {mustBeNonnegative, mustBeInteger}
-        % for all simia devices default deviceId is 0
-        deviceId uint8 = 0
-        nickname string = 'simiapump'
+        deviceId uint8
+        nickname string
     end
 
     methods (Access = public)
         function obj = pump(deviceIndex)
             obj.deviceIndex = deviceIndex;
+            [obj.deviceId, obj.nickname] = obj.getDeviceInfo();
         end
 
         function reward(obj, duration)
@@ -53,9 +53,11 @@ classdef pump
                 deviceId (1, 1) double {mustBeNonnegative, mustBeInteger, mustBeInRange(deviceId, 0, 255)}
             end
 
-            obj.deviceId = deviceId;
             report = obj.createFeatureSetDeviceInfo(deviceId, obj.nickname);
-            obj.setFeature(report);
+
+            obj.setFeature(PTBSimia.simiaPump.type.set_feature_cmd_t.SET_DEVICE_ID, report);
+
+            [obj.deviceId, ~] = obj.getDeviceInfo();
         end
 
         function setDeviceNickname(obj, nickname)
@@ -85,14 +87,31 @@ classdef pump
         end
 
         function [deviceId, nickname] = getDeviceInfo(obj)
-            [report, ~] = PsychHID('GetReport', obj.deviceIndex, 3, 0, 63);
+            arguments (Output)
+                deviceId (1, 1) uint8
+                nickname string
+            end
+
+            [report, ~] = obj.getFeature(PTBSimia.simiaPump.type.get_feature_cmd_t.GET_DEVICE_ID);
+
             report = obj.parseDeviceIdFeatureReport(report);
+
             deviceId = report.payload.device_id;
-            nickname = report.payload.nickname;
+            nickname = string(report.payload.nickname);
         end
 
-        function getWifi(obj)
-            PsychHID('GetReport', obj.deviceIndex, 3, 0, report);
+        function [ssid, password] = getWifi(obj)
+            arguments (Output)
+                ssid string
+                password string
+            end
+
+            [report, ~] = obj.getFeature(PTBSimia.simiaPump.type.get_feature_cmd_t.GET_WIFI);
+
+            report = obj.parseWifiFeatureReport(report);
+
+            ssid = string(report.payload.ssid);
+            password = string(report.payload.password);
         end
     end
 
@@ -101,27 +120,43 @@ classdef pump
             PsychHID('SetReport', obj.deviceIndex, 2, 1, cmd);
         end
 
-        function setFeature(obj, report)
-            PsychHID('SetReport', obj.deviceIndex, 3, 0, report);
+        function setFeature(obj, reportID, report)
+            arguments
+                obj
+                reportID (1, 1) PTBSimia.simiaPump.type.set_feature_cmd_t
+                report (1, 64) uint8
+            end
+
+            reportID = double(reportID);
+
+            PsychHID('SetReport', obj.deviceIndex, 3, reportID, report);
         end
 
-        function [report, err] = getFeature(obj)
-            [report, err] = PsychHID('GetReport', obj.deviceIndex, 3, 0, 63);
+        function [report, err] = getFeature(obj, reportID)
+            arguments
+                obj
+                reportID (1, 1) PTBSimia.simiaPump.type.get_feature_cmd_t
+            end
+
+            reportID = double(reportID);
+
+            [report, err] = PsychHID('GetReport', obj.deviceIndex, 3, reportID, 64);
         end
 
-        function report = parseDeviceIdFeatureReport(reportBytes)
-            if length(reportBytes) ~= 63
-                error('Invalid report length. Expected 63, got %d.', length(reportBytes));
+        function report = parseDeviceIdFeatureReport(~, reportBytes)
+            arguments
+                ~
+                reportBytes (1, 64) uint8
             end
 
             report = struct();
-            report.device_id = reportBytes(1);
+            report.device_id = reportBytes(2);
 
             payload = struct();
-            payload.device_id = reportBytes(2);
-            payload.nickname_len = reportBytes(3);
+            payload.device_id = reportBytes(3);
+            payload.nickname_len = reportBytes(4);
 
-            nickname_bytes = reportBytes(4:63);
+            nickname_bytes = reportBytes(5:64);
 
             if payload.nickname_len > 0
                 valid_nickname = nickname_bytes(1:payload.nickname_len);
@@ -133,7 +168,41 @@ classdef pump
             report.payload = payload;
         end
 
-        function report = parseWifiFeatureReport(report)
+        function report = parseWifiFeatureReport(~, reportBytes)
+            arguments
+                ~
+                reportBytes (1, 64) uint8
+            end
+
+            if length(reportBytes) ~= 64
+                error('Invalid report length. Expected 64, got %d.', length(reportBytes));
+            end
+
+            report = struct();
+            report.device_id = reportBytes(2);
+
+            payload = struct();
+            payload.ssid_len = reportBytes(3);
+            payload.password_len = reportBytes(4);
+
+            ssid_bytes = reportBytes(5:34);
+            password_bytes = reportBytes(35:64);
+
+            if payload.ssid_len > 0
+                valid_ssid = ssid_bytes(1:payload.ssid_len);
+                payload.ssid = char(valid_ssid);
+            else
+                payload.ssid = '';
+            end
+
+            if payload.password_len > 0
+                valid_password = password_bytes(1:payload.password_len);
+                payload.password = char(valid_password);
+            else
+                payload.password = '';
+            end
+
+            report.payload = payload;
         end
 
         function report = createOutputStartCmd(obj, duration)
@@ -152,12 +221,15 @@ classdef pump
                 'payload', duration ...
                 );
 
+
             report = [
                 0x00, ...
                 report_info.device_id, ...
                 report_info.cmd, ...
                 report_info.payload ...
                 ];
+
+            disp(report);
         end
 
         function report = createOutputStopCmd(obj, all)
@@ -227,24 +299,6 @@ classdef pump
                 ];
         end
 
-        % TODO: No Finished
-        function report = createOutputCmd(obj, cmd_type, payload)
-            arguments
-                obj
-                cmd_type PTBSimia.simiaPump.type.output_cmd_t
-                payload (1, :) uint8
-            end
-            device_id = uint8(obj.deviceId);
-            cmd = uint8(cmd_type);
-
-            report = [
-                0x00, ...
-                device_id, ...
-                cmd, ...
-                payload(:) ...
-                ];
-        end
-
         function report = createFeatureSetDeviceInfo(obj, deviceId, nickname)
             arguments
                 obj
@@ -256,11 +310,11 @@ classdef pump
 
             device_info = struct( ...
                 'device_id', deviceId, ...
-                'nickname_len', uint8(length(nickname)), ...
+                'nickname_len', uint8(strlength(nickname)), ...
                 'nickname', zeros(1, 60, "uint8") ...
                 );
 
-            device_info.nickname(1:device_info.nickname_len) = uint8(nickname);
+            device_info.nickname(1:device_info.nickname_len) = uint8(char(nickname));
 
             report_info = struct( ...
                 'device_id', uint8(obj.deviceId), ...

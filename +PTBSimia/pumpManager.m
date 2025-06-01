@@ -14,7 +14,7 @@ classdef pumpManager < handle
 
     properties
         %> Array of pump objects managed by this pumpManager
-        simiaPumps (1, :) PTBSimia.simiaPump.pump
+        simiaPumps (1, :) PTBSimia.simiaPump.pumpBase =PTBSimia.simiaPump.dummyPump.empty(1, 0);
     end
 
     %========================================================================
@@ -22,32 +22,42 @@ classdef pumpManager < handle
         %========================================================================
 
         % ===================================================================
-        function obj = pumpManager()
+        function obj = pumpManager(mode)
             %> @fn pumpManager
             %> @brief Class constructor
             %>
             %> Creates pump objects for all matching Simia pumps
             %>
+            %> @param mode if enable dummy pump [default=false]
             %> @return obj Initialized pumpManager object
             % ===================================================================
+            arguments (Input)
+                mode (1, 1) logical = false
+            end
+
             arguments (Output)
                 obj PTBSimia.pumpManager
             end
 
-            devices = PsychHID('Devices');
-            matchRule =  ...
-                strcmpi({devices.manufacturer}, obj.manufacturer) & ...
-                strcmpi({devices.product}, obj.product) ...
-                ;
-
-            matchedPumpIndex = [devices(matchRule).index];
-
-            if ~isempty(matchedPumpIndex)
-                for idx = matchedPumpIndex
-                    obj.simiaPumps(end+1) = PTBSimia.simiaPump.pump(idx);
-                end
+            if mode
+                obj.simiaPumps = PTBSimia.simiaPump.dummyPump(1);
             else
-                warning('No Simia pumps found!');
+                devices = PsychHID('Devices');
+                matchRule =  ...
+                    strcmpi({devices.manufacturer}, obj.manufacturer) & ...
+                    strcmpi({devices.product}, obj.product) ...
+                    ;
+
+                matchedPumpIndex = [devices(matchRule).index];
+
+                if ~isempty(matchedPumpIndex)
+                    obj.simiaPumps = PTBSimia.simiaPump.pump.empty(1, 0);
+                    for idx = matchedPumpIndex
+                        obj.simiaPumps(end+1) = PTBSimia.simiaPump.pump(idx);
+                    end
+                else
+                    warning('No Simia pumps found!');
+                end
             end
         end
 
@@ -315,7 +325,7 @@ classdef pumpManager < handle
             end
 
             arguments (Output)
-                pumps (1, :) PTBSimia.simiaPump.pump
+                pumps (1, :) PTBSimia.simiaPump.pumpBase
             end
 
             matchRule = ismember([obj.simiaPumps.deviceId], pumpId);

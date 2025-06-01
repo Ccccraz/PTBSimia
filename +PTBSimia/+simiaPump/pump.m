@@ -7,7 +7,7 @@
 %>
 %> Copyright ©2014-2025 HuYang — released: LGPL3
 % ==============================================================================
-classdef pump < handle
+classdef pump < PTBSimia.simiaPump.pumpBase
     properties
         %> Index of the HID device
         deviceIndex double

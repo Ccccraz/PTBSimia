@@ -16,7 +16,7 @@ classdef dummyPump < PTBSimia.simiaPump.pumpBase
         end
 
         function giveReward(obj, duration)
-            fprintf('[Dummy Pump] Index:%d | ID:%d - Simulating reward: %.1f ms\n', ...
+            fprintf('[Dummy Pump] Index:%d | ID:%d - Simulating reward: %d ms\n', ...
                 obj.deviceIndex, obj.deviceId, duration);
         end
 
@@ -27,7 +27,7 @@ classdef dummyPump < PTBSimia.simiaPump.pumpBase
 
         function setSpeed(obj, speed)
             obj.speed = speed;
-            fprintf('[Dummy Pump] Index:%d | ID:%d - Speed set to %.1f\n', ...
+            fprintf('[Dummy Pump] Index:%d | ID:%d - Speed set to %d\n', ...
                 obj.deviceIndex, obj.deviceId, speed);
         end
 
@@ -40,7 +40,7 @@ classdef dummyPump < PTBSimia.simiaPump.pumpBase
             fprintf('[Dummy Pump] Index:%d | ID:%d - Device Info:\n', ...
                 obj.deviceIndex, obj.deviceId);
             fprintf('  Nickname: %s\n', obj.nickname);
-            fprintf('  Speed: %.1f\n', obj.speed);
+            fprintf('  Speed: %d\n', obj.speed);
         end
 
         function getWifi(obj)
